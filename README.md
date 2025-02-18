@@ -1,3 +1,1 @@
-Code and data to reproduce pilot analyses for FDA legitimacy conjoing experiment.
-
-Rendered markdown: https://rpubs.com/Miajovanova1/1223418
+Code and data to reproduce pilot analyses and power calculation for FDA legitimacy conjoint pilot experiment.
