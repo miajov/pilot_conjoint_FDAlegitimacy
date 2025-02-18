@@ -1,0 +1,154 @@
+---
+title: "FDA Legitimacy: conjoint pilot results"
+date: '2024-09-22'
+output: 
+  html_document:
+  code_folding: hide
+highlight: tango
+number_sections: yes
+theme: united
+toc: yes
+toc_depth: 4
+toc_float: yes
+urlcolor: blue
+editor_options: 
+  chunk_output_type: inline
+
+---
+  
+  ```{r setup, include=F, warning=F}
+rm(list=ls()) 
+
+library(cjpowR)
+library(dplyr)
+library(broom)
+library(margins)
+library(cregg)
+library(ggplot2)
+library(mlogit)
+library(survey)
+library(psych)
+library(knitr)
+
+```
+
+# Research questions 
+
+**RQ1**: Does FDA approval influence the adoption of new mHealth apps (compared to non-FDA assessed apps) for tracking metabolic health?
+  
+  # Conjoint experiment set up
+  
+  ## Conjoint attributes & design
+  
+  **FDA Approval**: 
+  
+  - Yes: Has been regulated and approved by the FDA (Food & Drug Administration).
+  - No: Has not been assessed by the FDA (Food & Drug Administration)
+
+**Health Benefit**: 
+  
+  - High: Regular users see a large benefit in metabolic health.
+  - Low: Regular users see a small benefit in metabolic health.
+
+**Privacy**: 
+  
+  - High: Very unlikely to sell data to third-party companies without additional consent.
+  - Low: Likely to sell data to third-party companies without additional consent.
+
+**Invasiveness**:
+  
+  - High: Requires wearing a continuous glucose monitor (CGM), with a microneedle in the arm.
+  - Low: Does not require wearing a continuous glucose monitor (CGM), with a microneedle in the arm. 
+
+**Burden**: 
+  
+  - High: Requires manually logging meal ingredients in a food diary.
+  - Low:  Requires taking photos of meals to automatically track foods
+
+
+-----------------------------------
+  **Uniform attribute random sampling**
+  
+  - 16 trials; randomly sampled 2 of the 32 possible combinations 
+  - Random attribute ordering per participant (1-5 per participant but not per choice)
+  - Forced choice (logistic outcome)
+  
+  
+   # Results 
+
+   ## H1: 
+
+   **H1** FDA approval will have a significant positive effect on mHealth app choice relative to non-FDA assessed 
+   apps. 
+
+
+```{r, warning=F, message=FALSE}
+df <- read.csv("~/Documents/Conjoint/final_combined_df.csv", stringsAsFactors = FALSE)
+
+df$choice_n <- as.numeric(ifelse(df$choice == "yes", 1, 0))  # Convert to binary
+
+df$FDA_Approval <- factor(df$FDA_Approval, levels = c("FDA not approved", "FDA approved"))
+df$Burden <- factor(df$Burden, levels = c("low burden", "high burden"))
+df$Privacy <- factor(df$Privacy, levels = c("no privacy", "yes privacy"))
+df$Invasive <- factor(df$Invasive, levels = c("CGM not required", "CGM required"))
+df$Benefit <- factor(df$Benefit, levels = c("small benefit", "large benefit"))
+
+model1 <- amce(df, choice_n ~ FDA_Approval + Burden + Privacy + Invasive + Benefit,id = ~ ResponseId)
+
+model_tibble <- model1 %>% as_tibble() %>%
+  filter(!is.na(lower))
+
+# Display the resulting tibble
+kable(model_tibble)
+
+library(ggplot2)
+library(dplyr)
+
+# Custom labels for attribute levels
+custom_labels <- c(
+  "FDA not approved" = "Not Approved",
+  "FDA approved" = "Approved",
+  "low burden" = "Low Burden",
+  "high burden" = "High Burden",
+  "no privacy" = "No Privacy",
+  "yes privacy" = "Privacy",
+  "CGM not required" = "No CGM",
+  "CGM required" = "CGM Required",
+  "small benefit" = "Small Benefit",
+  "large benefit" = "Large Benefit"
+)
+
+# Create contrast plot with larger font and custom labels
+ggplot(model_tibble, aes(x = level, y = estimate, ymin = lower, ymax = upper, color = level)) +
+  geom_pointrange(size = 1) +  # Adjust point and line size
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  # Zero effect line
+  coord_flip() +  # Flip for better readability
+  theme_minimal(base_size = 14) +  # Set base font size
+  labs(
+    title = "Contrast Effects of Attributes on Choice",
+    x = "Attributes",
+    y = "AMCE Estimate"
+  ) +
+  scale_x_discrete(labels = custom_labels) +  # Apply custom labels
+  theme(
+    axis.text.y = element_text(size = 16),  # Increase font size of attribute labels
+    axis.text.x = element_text(size = 14),  
+    plot.title = element_text(size = 18, face = "bold"),  # Larger title
+    legend.position = "none"  # Remove legend
+  )
+```
+
+
+# Power Analysis 
+
+  Based on these preliminary findings: 
+
+* H1.To detect an AMCE of 0.16, with a power of 0.95, approx. **495** participants are needed.
+
+```{r warning=F, message=FALSE}
+
+rq1pwr = cjpowr_amce(amce = 0.16, power = 0.95, levels = 2)
+round(rq1pwr$n, digits =0)  #495
+```
+
+
